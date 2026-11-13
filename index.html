@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Timetable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=General+Sans:wght@400;600&family=Manrope:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F3F0E8;
+    --ink: #171717;
+    --accent: #A63D32;
+    --border: #D8D4CA;
+    --shadow: 0 4px 12px rgba(23, 23, 23, 0.08);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Manrope", sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    height: 100%;
+  }
+
+  body { display: flex; flex-direction: column; min-height: 100vh; }
+
+  header {
+    padding: 2rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  h1 {
+    margin: 0;
+    font-family: "General Sans", sans-serif;
+    font-weight: 600;
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+  }
+
+  main {
+    padding: 1.5rem;
+    flex: 1;
+    overflow-x: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  /* ---- Timetable grid ---- */
+  .timetable {
+    position: relative;
+    display: grid;
+    grid-template-columns: 70px repeat(6, 1fr);
+    grid-template-rows: 40px repeat(10, 70px);
+    gap: 8px;
+    width: 100%;
+    max-width: 1000px;
+    min-width: 700px;
+    margin: 0 auto;
+  }
+
+  .cell {
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    position: relative;
+    transition: background 0.15s;
+  }
+
+  .cell:hover { background: #FBF9F0; }
+
+  .time-label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.75rem;
+    color: #6e6b60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    border: none;
+    background: #fff;
+    border-radius: 8px;
+  }
+
+  .day-header {
+    font-family: "General Sans", sans-serif;
+    font-weight: 600;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: #fff;
+    border-radius: 8px;
+    color: #4a4840;
+  }
+
+  .corner {
+    border: none;
+    background: #fff;
+    border-radius: 8px;
+  }
+
+  .slot {
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 8px;
+    cursor: default;
+  }
+
+  .course-block {
+    position: absolute;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    line-height: 1.3;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    z-index: 2;
+  }
+
+  .course-block:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+  }
+
+  .course-block .code {
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 600;
+    font-size: 0.7rem;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .course-block .title {
+    font-family: "General Sans", sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    display: block;
+  }
+
+  .course-block .meta {
+    font-family: "Manrope", sans-serif;
+    font-size: 0.68rem;
+    opacity: 0.9;
+    margin-top: 2px;
+    display: block;
+  }
+
+  .empty-note {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9a978c;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.875rem;
+    pointer-events: none;
+    z-index: 1;
+    border-radius: 8px;
+  }
+
+  /* ---- Add course form ---- */
+  .form-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    max-width: 700px;
+    margin: 0 auto;
+    box-shadow: var(--shadow);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    align-items: end;
+  }
+
+  .form-field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .form-field label {
+    font-size: 0.75rem;
+    font-family: "General Sans", sans-serif;
+    font-weight: 600;
+    color: #4a4840;
+  }
+  .form-field input,
+  .form-field select {
+    font-family: "Manrope", sans-serif;
+    font-size: 0.9rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--ink);
+  }
+  .form-field input[type="color"] {
+    padding: 0.35rem;
+    height: 2.4rem;
+    border: none;
+    cursor: pointer;
+  }
+
+  .form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  button {
+    font-family: "Manrope", sans-serif;
+    font-size: 0.9rem;
+    padding: 0.6rem 1.1rem;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  button[type="submit"] {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  button[type="submit"]:hover { filter: brightness(1.1); }
+  button[type="submit"].editing { background: #4a4840; border-color: #4a4840; }
+  button.cancel {
+    background: transparent;
+    color: #4a4840;
+    border-color: var(--border);
+  }
+  button.cancel:hover { background: #f4f2e8; }
+
+  .edit-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 700px;
+    margin: 0 auto 0 auto;
+    flex-wrap: wrap;
+  }
+
+  #warning {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 0.75rem 1rem;
+    border: 1px solid #f4c2c2;
+    background: #fdedec;
+    color: #8a2c2c;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    display: none;
+  }
+
+  /* ---- Mobile list view ---- */
+  .mobile-list {
+    display: none;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .mobile-item {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+
+  .mobile-item:hover { background: #FBF9F0; box-shadow: var(--shadow); }
+
+  .mobile-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .mobile-info { flex: 1; min-width: 0; }
+  .mobile-day {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.75rem;
+    color: #6e6b60;
+  }
+  .mobile-code {
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+  .mobile-title {
+    font-family: "General Sans", sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-top: 2px;
+  }
+  .mobile-meta {
+    font-size: 0.8rem;
+    color: #4a4840;
+    margin-top: 2px;
+  }
+  .mobile-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+
+  @media (max-width: 640px) {
+    .timetable {
+      display: none;
+    }
+    .mobile-list {
+      display: block;
+    }
+    .cell { font-size: 0.75rem; }
+    .course-block { font-size: 0.7rem; padding: 4px 6px; }
+  }
+
+  @media (min-width: 641px) {
+    .mobile-list { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Weekly Timetable</h1>
+</header>
+
+<main>
+  <div id="warning">This course overlaps an existing one on that day. Change the day or time and try again.</div>
+
+  <div class="timetable" id="timetable">
+    <div class="corner"></div>
+  </div>
+
+  <div id="mobileList" class="mobile-list"></div>
+
+  <div class="edit-bar" id="editBar">
+    <strong id="editLabel" style="font-family:General Sans;font-size:0.85rem;color:#4a4840;">Add course</strong>
+    <button type="button" id="cancelEdit" class="cancel">Cancel</button>
+  </div>
+
+  <form id="courseForm" class="form-card">
+    <div class="form-field">
+      <label>Day</label>
+      <select id="fieldDay" required>
+        <option value="Monday">Mon</option>
+        <option value="Tuesday">Tue</option>
+        <option value="Wednesday">Wed</option>
+        <option value="Thursday">Thu</option>
+        <option value="Friday">Fri</option>
+        <option value="Saturday">Sat</option>
+      </select>
+    </div>
+    <div class="form-field">
+      <label>Start time</label>
+      <select id="fieldStart" required></select>
+    </div>
+    <div class="form-field">
+      <label>End time</label>
+      <select id="fieldEnd" required></select>
+    </div>
+    <div class="form-field">
+      <label>Course code</label>
+      <input id="fieldCode" type="text" placeholder="PAU-CSC 419" required>
+    </div>
+    <div class="form-field">
+      <label>Title</label>
+      <input id="fieldTitle" type="text" placeholder="Advances in Web, Mobile and Blockchain" required>
+    </div>
+    <div class="form-field">
+      <label>Room</label>
+      <input id="fieldRoom" type="text" placeholder="LT3">
+    </div>
+    <div class="form-field">
+      <label>Instructor</label>
+      <input id="fieldInstructor" type="text" placeholder="Dr. Adebayo">
+    </div>
+    <div class="form-field">
+      <label>Color</label>
+      <input id="fieldColor" type="color" value="#A63D32">
+    </div>
+    <div class="form-actions">
+      <button type="submit">Save course</button>
+      <button type="button" class="cancel" id="cancelForm">Cancel</button>
+    </div>
+    <input type="hidden" id="fieldId">
+  </form>
+</main>
+
+<script>
+  /* ---- PAU time model ---- */
+  // School: 8:30 – 18:30. Each hour = 50 min class + 10 min break.
+  // Slots (grid rows): 8:30, 9:30, …, 17:30  (10 one-hour blocks)
+  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const SLOT_START_MIN = 8 * 60 + 30;   // 08:30
+  const SLOT_END_MIN = 18 * 60 + 30;    // 18:30
+  const SLOT_COUNT = (SLOT_END_MIN - SLOT_START_MIN) / 60; // 10
+
+  function fmtTime(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h + ":" + (m < 10 ? "0" : "") + m;
+  }
+
+  // Build slot labels: 8:30, 9:30, …, 17:30
+  const slots = [];
+  for (let i = 0; i < SLOT_COUNT; i++) {
+    slots.push({ label: fmtTime(SLOT_START_MIN + i * 60), startMin: SLOT_START_MIN + i * 60 });
+  }
+
+  // In-memory course data (localStorage added in a later step)
+  let courses = [];
+  let editingId = null;
+
+  const timetableEl = document.getElementById("timetable");
+  const warningEl = document.getElementById("warning");
+  const form = document.getElementById("courseForm");
+  const editBar = document.getElementById("editBar");
+  const editLabel = document.getElementById("editLabel");
+  const cancelEditBtn = document.getElementById("cancelEdit");
+  const cancelFormBtn = document.getElementById("cancelForm");
+
+  /* ---- Grid ---- */
+  function buildGrid() {
+    timetableEl.innerHTML = "";
+    timetableEl.style.gridTemplateRows = "40px repeat(" + SLOT_COUNT + ", 70px)";
+
+    // Corner
+    timetableEl.appendChild(makeCell("corner"));
+
+    // Day headers
+    DAYS.forEach(function (day) {
+      timetableEl.appendChild(makeCell("day-header", day));
+    });
+
+    // Time label + slots per row
+    slots.forEach(function (slot) {
+      timetableEl.appendChild(makeCell("time-label", slot.label));
+      for (let d = 0; d < DAYS.length; d++) {
+        timetableEl.appendChild(makeCell("slot"));
+      }
+    });
+
+    // Empty note
+    const note = document.createElement("div");
+    note.className = "empty-note";
+    note.textContent = "No courses yet. Add your first course to see it appear here.";
+    timetableEl.appendChild(note);
+  }
+
+  function makeCell(className, text) {
+    const el = document.createElement("div");
+    el.className = "cell " + className;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+
+  /* ---- Render courses onto grid ---- */
+  function render() {
+    // Remove previous blocks
+    document.querySelectorAll(".course-block").forEach(function (b) { b.remove(); });
+
+    if (courses.length === 0) {
+      document.querySelector(".empty-note").style.display = "flex";
+    } else {
+      document.querySelector(".empty-note").style.display = "none";
+    }
+
+    courses.forEach(function (course) {
+      const dayIndex = DAYS.indexOf(course.day);
+      if (dayIndex < 0) return;
+
+      // slot index from start minutes
+      const startSlot = (course.startMin - SLOT_START_MIN) / 60;
+      const span = Math.round(course.durationHours); // 2 or 3
+
+      const block = document.createElement("div");
+      block.className = "course-block";
+      block.style.backgroundColor = course.color || "#A63D32";
+      block.style.color = "#fff";
+      block.style.gridColumnStart = dayIndex + 2;   // col 1 = time labels
+      block.style.gridRowStart = startSlot + 2;     // row 1 = day headers
+      block.style.gridRowEnd = startSlot + 2 + span;
+      block.innerHTML =
+        '<span class="code">' + escapeHtml(course.code) + '</span>' +
+        '<span class="title">' + escapeHtml(course.title) + '</span>' +
+        '<span class="meta">' + escapeHtml(course.room) + " · " + escapeHtml(course.instructor) + "</span>";
+      block.title = escapeHtml(course.code) + " · " + escapeHtml(course.title) + " · " + escapeHtml(course.day) + " " + fmtTime(course.startMin);
+      block.dataset.id = course.id;
+      block.onclick = function () { selectCourse(course.id); };
+
+      timetableEl.appendChild(block);
+    });
+
+    renderMobileList();
+  }
+
+  function renderMobileList() {
+    const listEl = document.getElementById("mobileList");
+    if (!listEl) return;
+    if (courses.length === 0) {
+      listEl.innerHTML = '<div style="text-align:center;color:#9a978c;font-family:\'IBM Plex Mono\',monospace;padding:1rem;">No courses yet.</div>';
+      return;
+    }
+    listEl.innerHTML = courses.map(function (course) {
+      const dayIndex = DAYS.indexOf(course.day);
+      const dayShort = dayIndex >= 0 ? DAYS[dayIndex].slice(0, 3) : course.day;
+      const color = escapeHtml(course.color || "#A63D32");
+      return (
+        '<div class="mobile-item">' +
+        '<div class="mobile-color" style="background:' + color + '"></div>' +
+        '<div class="mobile-info">' +
+        '<div class="mobile-day">' + escapeHtml(dayShort) + " · " + fmtTime(course.startMin) + "–" + fmtTime(course.endMin) + "</div>" +
+        '<div class="mobile-code">' + escapeHtml(course.code) + "</div>" +
+        '<div class="mobile-title">' + escapeHtml(course.title) + "</div>" +
+        '<div class="mobile-meta">' + escapeHtml(course.room || "") + " · " + escapeHtml(course.instructor || "") + "</div>" +
+        "</div>" +
+        '<div class="mobile-actions">' +
+        '<button type="button" class="cancel">Delete</button>' +
+        "</div>" +
+        "</div>"
+      );
+    }).join("");
+
+    // Wire up click handlers on the freshly injected items.
+    listEl.querySelectorAll(".mobile-item").forEach(function (item, index) {
+      // Only courses with a valid day render a block; align by filtered order is fragile,
+      // so attach by matching dataset stored on the item instead.
+      item.onclick = function (e) {
+        if (e.target.closest("button")) return;
+        selectCourse(courses[index].id);
+      };
+      item.querySelector("button").onclick = function (e) {
+        e.stopPropagation();
+        deleteCourse(courses[index].id);
+      };
+    });
+  }
+
+  function deleteCourse(id) {
+    if (!confirm("Delete this course?")) return;
+    courses = courses.filter(function (c) { return c.id !== id; });
+    save();
+    render();
+    resetForm();
+  }
+
+  /* ---- Form time options (PAU rules: 2–3 hr courses, end ≤ 18:30) ---- */
+  function populateStartTimes() {
+    const sel = document.getElementById("fieldStart");
+    sel.innerHTML = "";
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      // start must allow at least a 2-hr course ending by 18:30
+      if (SLOT_START_MIN + i * 60 + 120 > SLOT_END_MIN) break;
+      const opt = document.createElement("option");
+      opt.value = slots[i].startMin;
+      opt.textContent = slots[i].label;
+      sel.appendChild(opt);
+    }
+    populateEndTimes();
+  }
+
+  function populateEndTimes() {
+    const startSel = document.getElementById("fieldStart");
+    const endSel = document.getElementById("fieldEnd");
+    const startMin = parseInt(startSel.value, 10);
+    endSel.innerHTML = "";
+    [2, 3].forEach(function (hrs) {
+      const endMin = startMin + hrs * 60;
+      if (endMin <= SLOT_END_MIN) {
+        const opt = document.createElement("option");
+        opt.value = endMin;
+        opt.textContent = fmtTime(endMin) + " (" + hrs + "-hr)";
+        endSel.appendChild(opt);
+      }
+    });
+  }
+
+  document.getElementById("fieldStart").addEventListener("change", populateEndTimes);
+
+  /* ---- Form handlers ---- */
+  function resetForm() {
+    editingId = null;
+    document.getElementById("fieldId").value = "";
+    form.reset();
+    editLabel.textContent = "Add course";
+    cancelEditBtn.style.display = "none";
+    cancelFormBtn.textContent = "Cancel";
+    document.querySelector('button[type="submit"]').classList.remove("editing");
+    document.querySelector('button[type="submit"]').textContent = "Save course";
+    warningEl.style.display = "none";
+  }
+
+  function selectCourse(id) {
+    const course = courses.find(function (c) { return c.id === id; });
+    if (!course) return;
+    editingId = id;
+    document.getElementById("fieldId").value = course.id;
+    document.getElementById("fieldDay").value = course.day;
+    document.getElementById("fieldStart").value = course.startMin;
+    populateEndTimes();
+    document.getElementById("fieldEnd").value = course.startMin + course.durationHours * 60;
+    document.getElementById("fieldCode").value = course.code;
+    document.getElementById("fieldTitle").value = course.title;
+    document.getElementById("fieldRoom").value = course.room || "";
+    document.getElementById("fieldInstructor").value = course.instructor || "";
+    document.getElementById("fieldColor").value = course.color || "#A63D32";
+    editLabel.textContent = "Edit course";
+    cancelEditBtn.style.display = "inline-block";
+    cancelFormBtn.textContent = "Delete";
+    const submitBtn = document.querySelector('button[type="submit"]');
+    submitBtn.classList.add("editing");
+    submitBtn.textContent = "Save changes";
+    warningEl.style.display = "none";
+  }
+
+  function generateId() {
+    return "c" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+  }
+
+  /* ---- localStorage persistence ---- */
+  const STORAGE_KEY = "pau-timetable-courses";
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(courses));
+    } catch (e) {
+      // localStorage may be unavailable or quota-exceeded; ignore silently.
+    }
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        courses = JSON.parse(raw);
+      }
+    } catch (e) {
+      courses = [];
+    }
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    warningEl.style.display = "none";
+
+    const day = document.getElementById("fieldDay").value;
+    const startMin = parseInt(document.getElementById("fieldStart").value, 10);
+    const endMin = parseInt(document.getElementById("fieldEnd").value, 10);
+    const durationHours = (endMin - startMin) / 60;
+
+    if (durationHours !== 2 && durationHours !== 3) {
+      showWarning("Courses must be 2 or 3 hours long.");
+      return;
+    }
+
+    // Overlap detection: same-day time-range overlap, excluding the course being edited.
+    const overlaps = courses.some(function (c) {
+      if (c.day !== day) return false;
+      if (editingId && c.id === editingId) return false;
+      return startMin < c.endMin && c.startMin < endMin;
+    });
+
+    if (overlaps) {
+      showWarning("This course overlaps an existing one on that day. Change the day or time and try again.");
+      return;
+    }
+
+    const code = document.getElementById("fieldCode").value.trim();
+    const title = document.getElementById("fieldTitle").value.trim();
+    const room = document.getElementById("fieldRoom").value.trim();
+    const instructor = document.getElementById("fieldInstructor").value.trim();
+    const color = document.getElementById("fieldColor").value;
+
+    const course = {
+      id: editingId || generateId(),
+      code, title, day, startMin, endMin, durationHours,
+      room, instructor, color
+    };
+
+    if (editingId) {
+      courses = courses.map(function (c) { return c.id === editingId ? course : c; });
+    } else {
+      courses.push(course);
+    }
+
+    save();
+    resetForm();
+    render();
+  });
+
+  cancelFormBtn.addEventListener("click", function () {
+    if (editingId) {
+      if (!confirm("Delete this course?")) return;
+      courses = courses.filter(function (c) { return c.id !== editingId; });
+      save();
+      render();
+    }
+    resetForm();
+  });
+
+  cancelEditBtn.addEventListener("click", resetForm);
+
+  function showWarning(msg) {
+    warningEl.textContent = msg;
+    warningEl.style.display = "block";
+  }
+
+  function escapeHtml(text) {
+    if (text == null) return "";
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  /* ---- Init ---- */
+  load();
+  buildGrid();
+  populateStartTimes();
+  render();
+</script>
+
+</body>
+</html>
